@@ -35,4 +35,20 @@ class VLite:
             self.texts.append(chunk)
             idx = len(self.texts) - 1
             self.metadata[idx] = metadata or {}
-            self.metadata[idx]['index'] = id or
+            self.metadata[idx]['index'] = id or idx
+        self.save()
+        return id, self.vectors
+
+    def remember_by_id(self, id):
+        return self.metadata[id]
+
+    def remember_by_text(self, text, top_k=5):
+        sims = cos_sim(self.model.embed(texts=text), self.vectors)
+        sims = sims[0]
+        top_5_idx = np.argpartition(sims, -top_k)[-top_k:]
+        top_5_idx = top_5_idx[np.argsort(sims[top_5_idx])[::-1]]
+        return [self.texts[idx] for idx in top_5_idx], sims[top_5_idx]
+
+    def save(self):
+        with open(self.collection, 'wb') as f:
+            np.savez(f, texts=self.texts, metadata=self.metadata, vectors=self.vectors)
